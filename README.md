@@ -25,5 +25,10 @@ GopherSocial is a backend engineering project developed in Go, emulating a socia
 
 - Containerization: Docker & Docker Compose
 
+## Reference 
+- [Optimistic vs Pessimistic Concurrency](https://web.archive.org/web/20241126204656/https://cult.honeypot.io/reads/optimistic-vs-pessimistic-concurrency/)
+- [Repository Pattern in Go](https://threedots.tech/post/repository-pattern-in-go/)
 
-In progress...
+
+
+** In progress...

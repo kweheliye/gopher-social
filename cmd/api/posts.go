@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/kweheliye/gopher-social/internal/store"
 	"net/http"
 	"strconv"
@@ -12,6 +13,12 @@ import (
 type postKey string
 
 const postCtx postKey = "post"
+
+var Validate *validator.Validate
+
+func init() {
+	Validate = validator.New(validator.WithRequiredStructEnabled())
+}
 
 type CreatePostPayload struct {
 	Title   string   `json:"title" validate:"required,max=100"`
@@ -40,10 +47,10 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	//if err := Validate.Struct(payload); err != nil {
-	//	app.badRequestResponse(w, r, err)
-	//	return
-	//}
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
 	//user := getUserFromContext(r)
 
@@ -97,10 +104,20 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			app.internalServerError(w, r, err)
 		}
+		return
 	}
+
+	comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+	post.Comments = comments
+
 	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
 		app.internalServerError(w, r, err)
 	}
+
 }
 
 // DeletePost godoc
@@ -169,10 +186,10 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	//if err := Validate.Struct(payload); err != nil {
-	//	app.badRequestResponse(w, r, err)
-	//	return
-	//}
+	if err := Validate.Struct(payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
 	if payload.Content != nil {
 		post.Content = *payload.Content

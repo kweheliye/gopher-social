@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/kweheliye/gopher-social/internal/store"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 type application struct {
 	config config
 	store  store.Storage
+	logger *zap.SugaredLogger
 }
 
 type dbConfig struct {
@@ -24,6 +26,7 @@ type dbConfig struct {
 type config struct {
 	addr string
 	db   dbConfig
+	env  string
 }
 
 func (app *application) mount() http.Handler {
@@ -38,6 +41,14 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+		r.Route("/posts", func(r chi.Router) {
+			r.Post("/", app.createPostHandler)
+
+			r.Route("/{postID}", func(r chi.Router) {
+				r.Get("/", app.getPostHandler)
+			})
+		})
+
 	})
 
 	return r

@@ -9,6 +9,7 @@ import (
 
 func main() {
 	addr := env.GetString("DB_ADDR", "")
+	log.Println("Connecting to database at", addr)
 	conn, err := db.New(addr, 3, 3, "15m")
 	if err != nil {
 		log.Fatal(err)

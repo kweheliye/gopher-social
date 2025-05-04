@@ -5,17 +5,34 @@ import (
 	"github.com/kweheliye/gopher-social/internal/env"
 	store2 "github.com/kweheliye/gopher-social/internal/store"
 	"go.uber.org/zap"
-	"log"
 )
 
 const (
 	version = "0.0.1"
 )
 
+//	@title			GopherSocial API
+//	@description	API for GopherSocial, a social network for gohpers
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.url	http://www.swagger.io/support
+//	@contact.email	support@swagger.io
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @BasePath					/v1
+//
+// @securityDefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						Authorization
+// @description
 func main() {
 	cfg := config{
-		addr: env.GetString("ADDR", ":8080"),
-		env:  env.GetString("ENV", "dev"),
+		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
+		addr:   env.GetString("ADDR", ":8080"),
+		env:    env.GetString("ENV", "dev"),
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", ""),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
@@ -36,11 +53,11 @@ func main() {
 		cfg.db.maxIdleTime,
 	)
 	if err != nil {
-		log.Panic(err)
+		logger.Panic(err)
 	}
 
 	defer db.Close()
-	log.Println("Connected to database")
+	logger.Info("Connected to database")
 
 	store := store2.NewStorage(db)
 
@@ -51,6 +68,6 @@ func main() {
 	}
 
 	mux := app.mount()
-	log.Fatal(app.run(mux))
+	logger.Fatal(app.run(mux))
 
 }

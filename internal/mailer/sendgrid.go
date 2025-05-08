@@ -58,15 +58,21 @@ func (m *SendGridMailer) Send(templateFile, username, email string, data any, is
 
 	var retryErr error
 	for i := 0; i < maxRetires; i++ {
-		response, retryErr := m.client.Send(message)
-		if retryErr != nil {
+		response, err := m.client.Send(message)
+		if err != nil {
+			retryErr = err
 			// exponential backoff
 			time.Sleep(time.Second * time.Duration(i+1))
 			continue
 		}
 
+		// If we get a 403 Forbidden, it's likely an API key issue
+		if response.StatusCode == 403 {
+			return response.StatusCode, fmt.Errorf("SendGrid API returned 403 Forbidden: %s", response.Body)
+		}
+
 		return response.StatusCode, nil
 	}
 
-	return -1, fmt.Errorf("failed to send email after %d attempt, error: %v", maxRetires, retryErr)
+	return -1, fmt.Errorf("failed to send email after %d attempts, error: %v", maxRetires, retryErr)
 }

@@ -111,7 +111,14 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	app.logger.Infow("Email sent", "status code", status)
+	// Check for specific status codes
+	if status == 403 {
+		app.logger.Warnw("Email service returned 403 Forbidden - check API key permissions", "status code", status)
+	} else if status >= 400 {
+		app.logger.Warnw("Email service returned an error status code", "status code", status)
+	} else {
+		app.logger.Infow("Email sent successfully", "status code", status)
+	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
 		app.internalServerError(w, r, err)

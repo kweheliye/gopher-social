@@ -45,7 +45,7 @@ func main() {
 		},
 		mail: mailConfig{
 			exp:       time.Hour * 24 * 3, // 3 days
-			fromEmail: env.GetString("FROM_EMAIL", "info@yallafixmycar.com"),
+			fromEmail: env.GetString("FROM_EMAIL", ""),
 			sendGrid: sendGridConfig{
 				apiKey: env.GetString("SENDGRID_API_KEY", ""),
 			},

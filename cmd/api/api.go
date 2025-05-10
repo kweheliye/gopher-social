@@ -8,6 +8,7 @@ import (
 	"github.com/kweheliye/gopher-social/internal/auth"
 	"github.com/kweheliye/gopher-social/internal/mailer"
 	"github.com/kweheliye/gopher-social/internal/store"
+	"github.com/kweheliye/gopher-social/internal/store/cache"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"go.uber.org/zap"
 	"net/http"
@@ -20,6 +21,7 @@ type application struct {
 	logger        *zap.SugaredLogger
 	authenticator auth.Authenticator
 	mailer        mailer.Client
+	cacheStorage  cache.Storage
 }
 
 type dbConfig struct {
@@ -37,6 +39,14 @@ type config struct {
 	frontendURL string
 	auth        authConfig
 	mail        mailConfig
+	redisCfg    redisConfig
+}
+
+type redisConfig struct {
+	addr    string
+	pw      string
+	db      int
+	enabled bool
 }
 
 type mailConfig struct {
@@ -81,7 +91,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/health", app.healthCheckHandler)
+		r.With(app.BasicAuthMiddleware()).Get("/health", app.healthCheckHandler)
 
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))

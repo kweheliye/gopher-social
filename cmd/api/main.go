@@ -59,7 +59,7 @@ func main() {
 				pass: env.GetString("AUTH_BASIC_PASS", ""),
 			},
 			token: tokenConfig{
-				secret: env.GetString("AUTH_TOKEN_SECRET", "example"),
+				secret: env.GetString("AUTH_TOKEN_SECRET", "test"),
 				exp:    time.Hour * 24 * 3, // 3 days
 				iss:    "gophersocial",
 			},
@@ -93,7 +93,6 @@ func main() {
 		logger.Info("SendGrid mailer initialized")
 	}
 
-	// If SendGrid API key is not provided or as a fallback, try MailTrap
 	if mailClient == nil || cfg.mail.mailTrap.apiKey != "" {
 		if cfg.mail.mailTrap.apiKey != "" {
 			var mailTrapErr error

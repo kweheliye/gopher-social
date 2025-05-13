@@ -1,11 +1,13 @@
 package main
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/kweheliye/gopher-social/internal/auth"
 	"github.com/kweheliye/gopher-social/internal/db"
 	"github.com/kweheliye/gopher-social/internal/env"
 	"github.com/kweheliye/gopher-social/internal/mailer"
 	store2 "github.com/kweheliye/gopher-social/internal/store"
+	"github.com/kweheliye/gopher-social/internal/store/cache"
 	"go.uber.org/zap"
 	"time"
 )
@@ -42,6 +44,12 @@ func main() {
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
+		},
+		redisCfg: redisConfig{
+			addr:    env.GetString("REDIS_ADDR", "localhost:6379"),
+			pw:      env.GetString("REDIS_PW", ""),
+			db:      env.GetInt("REDIS_DB", 0),
+			enabled: env.GetBool("REDIS_ENABLED", true),
 		},
 		mail: mailConfig{
 			exp:       time.Hour * 24 * 3, // 3 days
@@ -82,34 +90,21 @@ func main() {
 	}
 
 	defer db.Close()
-	logger.Info("Connected to database")
+	logger.Info("database connection pool established")
 
-	store := store2.NewStorage(db)
+	// Cache
+	var rdb *redis.Client
+	if cfg.redisCfg.enabled {
+		rdb = cache.NewRedisClient(cfg.redisCfg.addr, cfg.redisCfg.pw, cfg.redisCfg.db)
+		logger.Info("redis cache connection established")
+		defer rdb.Close()
+	}
 
 	// Initialize mailer with fallback mechanism
 	var mailClient mailer.Client
 	if cfg.mail.sendGrid.apiKey != "" {
 		mailClient = mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
 		logger.Info("SendGrid mailer initialized")
-	}
-
-	if mailClient == nil || cfg.mail.mailTrap.apiKey != "" {
-		if cfg.mail.mailTrap.apiKey != "" {
-			var mailTrapErr error
-			mailTrapClient, mailTrapErr := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
-			if mailTrapErr != nil {
-				logger.Warnw("Failed to initialize MailTrap client", "error", mailTrapErr)
-			} else {
-				// If SendGrid is not configured or we want to use MailTrap as primary
-				if mailClient == nil {
-					mailClient = mailTrapClient
-					logger.Info("MailTrap mailer initialized as primary")
-				} else {
-					// Store MailTrap as a fallback option that will be used in auth.go if SendGrid fails
-					logger.Info("MailTrap mailer initialized as fallback")
-				}
-			}
-		}
 	}
 
 	if mailClient == nil {
@@ -123,12 +118,16 @@ func main() {
 		cfg.auth.token.iss,
 	)
 
+	store := store2.NewStorage(db)
+	cacheStorage := cache.NewRedisStorage(rdb)
+
 	app := &application{
 		config:        cfg,
 		store:         store,
 		logger:        logger,
 		mailer:        mailClient,
 		authenticator: jwtAuthenticator,
+		cacheStorage:  cacheStorage,
 	}
 
 	mux := app.mount()

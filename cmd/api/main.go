@@ -6,6 +6,7 @@ import (
 	"github.com/kweheliye/gopher-social/internal/db"
 	"github.com/kweheliye/gopher-social/internal/env"
 	"github.com/kweheliye/gopher-social/internal/mailer"
+	"github.com/kweheliye/gopher-social/internal/ratelimiter"
 	store2 "github.com/kweheliye/gopher-social/internal/store"
 	"github.com/kweheliye/gopher-social/internal/store/cache"
 	"go.uber.org/zap"
@@ -72,6 +73,11 @@ func main() {
 				iss:    "gophersocial",
 			},
 		},
+		rateLimiter: ratelimiter.Config{
+			RequestsPerTimeFrame: env.GetInt("RATELIMITER_REQUESTS_COUNT", 20),
+			TimeFrame:            time.Second * 5,
+			Enabled:              env.GetBool("RATE_LIMITER_ENABLED", true),
+		},
 	}
 
 	// Logger
@@ -100,7 +106,12 @@ func main() {
 		defer rdb.Close()
 	}
 
-	// Initialize mailer with fallback mechanism
+	// Rate limiter
+	rateLimiter := ratelimiter.NewFixedWindowLimiter(
+		cfg.rateLimiter.RequestsPerTimeFrame,
+		cfg.rateLimiter.TimeFrame,
+	)
+
 	var mailClient mailer.Client
 	if cfg.mail.sendGrid.apiKey != "" {
 		mailClient = mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
@@ -128,6 +139,7 @@ func main() {
 		mailer:        mailClient,
 		authenticator: jwtAuthenticator,
 		cacheStorage:  cacheStorage,
+		rateLimiter:   rateLimiter,
 	}
 
 	mux := app.mount()

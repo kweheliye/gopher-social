@@ -7,6 +7,7 @@ import (
 	"github.com/kweheliye/gopher-social/docs"
 	"github.com/kweheliye/gopher-social/internal/auth"
 	"github.com/kweheliye/gopher-social/internal/mailer"
+	"github.com/kweheliye/gopher-social/internal/ratelimiter"
 	"github.com/kweheliye/gopher-social/internal/store"
 	"github.com/kweheliye/gopher-social/internal/store/cache"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -22,6 +23,7 @@ type application struct {
 	authenticator auth.Authenticator
 	mailer        mailer.Client
 	cacheStorage  cache.Storage
+	rateLimiter   ratelimiter.Limiter
 }
 
 type dbConfig struct {
@@ -40,6 +42,7 @@ type config struct {
 	auth        authConfig
 	mail        mailConfig
 	redisCfg    redisConfig
+	rateLimiter ratelimiter.Config
 }
 
 type redisConfig struct {
@@ -87,6 +90,10 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	if app.config.rateLimiter.Enabled {
+		r.Use(app.RateLimiterMiddleware)
+	}
 
 	r.Use(middleware.Timeout(60 * time.Second))
 

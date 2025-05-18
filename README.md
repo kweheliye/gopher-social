@@ -31,5 +31,6 @@ GopherSocial is a backend engineering project developed in Go, emulating a socia
 - [Index Columns for `LIKE`](https://niallburkley.com/blog/index-columns-for-like-in-postgres/)
 - [SQL Indexes Introduction](https://www.postgresql.org/docs/13/indexes-intro.html)
 - [pg_trgm module docs](https://www.postgresql.org/docs/9.5/pgtrgm.html)
-
+- [Go Swag](https://github.com/swaggo/swag?tab=readme-ov-file)
+- [Chi Swagger](https://github.com/swaggo/http-swagger)
 ** In progress...

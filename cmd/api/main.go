@@ -1,6 +1,7 @@
 package main
 
 import (
+	"expvar"
 	"github.com/go-redis/redis/v8"
 	"github.com/kweheliye/gopher-social/internal/auth"
 	"github.com/kweheliye/gopher-social/internal/db"
@@ -10,6 +11,7 @@ import (
 	store2 "github.com/kweheliye/gopher-social/internal/store"
 	"github.com/kweheliye/gopher-social/internal/store/cache"
 	"go.uber.org/zap"
+	"runtime"
 	"time"
 )
 
@@ -141,6 +143,15 @@ func main() {
 		cacheStorage:  cacheStorage,
 		rateLimiter:   rateLimiter,
 	}
+
+	// Metrics collected
+	expvar.NewString("version").Set(version)
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
 
 	mux := app.mount()
 	logger.Fatal(app.run(mux))
